@@ -45,6 +45,13 @@
   "require-dev": {
     "orchestra/testbench": "^10.0|^11.0"
   },
+  "scripts": {
+    "analyse": "cd ../.. && vendor/bin/phpstan analyse -c phpstan.neon packages/core/src packages/core/database/migrations --memory-limit=1G",
+    "lint:check": "../../vendor/bin/pint --test",
+    "test": "../../vendor/bin/pest --configuration=../../phpunit.xml --bootstrap=../../vendor/autoload.php --testsuite=CorePackage --exclude-group=pg",
+    "test:coverage": "XDEBUG_MODE=coverage ../../vendor/bin/pest --configuration=../../phpunit.xml --bootstrap=../../vendor/autoload.php --testsuite=CorePackage --exclude-group=pg --coverage --min=80",
+    "test:pg": "../../vendor/bin/pest --configuration=../../phpunit.xml --bootstrap=../../vendor/autoload.php --testsuite=CorePackage --group=pg"
+  },
   "type": "library",
-  "version": "0.1.0-p4.3"
+  "version": "0.4.0-alpha.20260918"
 }

@@ -50,11 +50,20 @@ final class DatabasePollPubSub implements PubSub
     #[Override]
     public function publish(string $channel, array $payload): void
     {
-        DB::connection($this->connection)->table(Config::pubsubMessagesTable())->insert([
-            'channel' => $channel,
-            'payload' => json_encode($payload, JSON_THROW_ON_ERROR),
-            'created_at' => now(),
-        ]);
+        $connection = DB::connection($this->connection);
+
+        $connection->transaction(function () use ($channel, $payload, $connection): void {
+            $connection->select(
+                query: 'SELECT pg_advisory_xact_lock(hashtext(?))',
+                bindings: ['corex-pubsub:'.$channel],
+            );
+
+            $connection->table(Config::pubsubMessagesTable())->insert([
+                'channel' => $channel,
+                'payload' => json_encode($payload, JSON_THROW_ON_ERROR),
+                'created_at' => now(),
+            ]);
+        });
     }
 
     /**

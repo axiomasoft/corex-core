@@ -17,11 +17,19 @@ final class ScopedFilesystem implements Filesystem
         private readonly TenantContextResolver $contexts,
         private readonly string $accountId,
         private readonly string $root,
+        private readonly bool $localPaths = true,
     ) {}
 
     public function path($path)
     {
-        return $this->call('path', [$this->safePath($path)]);
+        $path = $this->safePath($path);
+        $this->assertCurrentContext();
+
+        if (! $this->localPaths) {
+            throw new StorageOperationFailed('The scoped object storage driver does not expose local paths.');
+        }
+
+        return $this->call('path', [$path]);
     }
 
     public function exists($path)
@@ -156,21 +164,42 @@ final class ScopedFilesystem implements Filesystem
     public function url(string $path): string
     {
         $this->safePath($path);
+        $this->assertCurrentContext();
 
-        throw new StorageOperationFailed('The local scoped storage driver does not expose file URLs.');
+        throw new StorageOperationFailed('The scoped storage driver does not expose file URLs.');
     }
 
     /** @param array<mixed> $arguments */
     private function call(string $method, array $arguments): mixed
     {
-        if ($this->contexts->current()->account->id !== $this->accountId) {
-            throw new StorageOperationFailed('Storage handle belongs to a different account context.');
+        $this->assertCurrentContext();
+        $this->assertNoSymlink(path: '');
+
+        if (! $this->localPaths) {
+            $optionIndex = match ($method) {
+                'put', 'putFile', 'writeStream' => 2,
+                'putFileAs' => 3,
+                default => null,
+            };
+            $options = $optionIndex === null ? [] : ($arguments[$optionIndex] ?? []);
+            $visibility = $method === 'setVisibility' ? $arguments[1] : (is_array($options) ? ($options['visibility'] ?? 'private') : $options);
+
+            if ($visibility !== 'private' || (is_array($options) && ($options['ACL'] ?? 'private') !== 'private')) {
+                throw new StorageOperationFailed('Scoped object storage supports private visibility only.');
+            }
         }
 
         try {
             return $this->filesystem->{$method}(...$arguments);
         } catch (RuntimeException $exception) {
             throw new StorageOperationFailed('Scoped storage operation failed.', previous: $exception);
+        }
+    }
+
+    private function assertCurrentContext(): void
+    {
+        if ($this->contexts->current()->account->id !== $this->accountId) {
+            throw new StorageOperationFailed('Storage handle belongs to a different account context.');
         }
     }
 
@@ -185,6 +214,10 @@ final class ScopedFilesystem implements Filesystem
             $previous = $decoded;
             $decoded = rawurldecode($decoded);
         } while ($decoded !== $previous);
+
+        if (str_contains($decoded, "\0") || str_contains($decoded, '\\')) {
+            throw new StorageOperationFailed('Storage path is invalid.');
+        }
 
         if (str_starts_with($decoded, '/') || preg_match('/^[A-Za-z]:/', $decoded) === 1) {
             throw new StorageOperationFailed('Storage path must be relative.');
@@ -203,7 +236,17 @@ final class ScopedFilesystem implements Filesystem
 
     private function assertNoSymlink(string $path): void
     {
+        if (! $this->localPaths) {
+            return;
+        }
+
         $candidate = rtrim($this->root, DIRECTORY_SEPARATOR);
+
+        for ($ancestor = $candidate; $ancestor !== '' && $ancestor !== dirname($ancestor); $ancestor = dirname($ancestor)) {
+            if (is_link($ancestor)) {
+                throw new StorageOperationFailed('Storage roots must not contain symbolic links.');
+            }
+        }
 
         foreach (explode('/', $path) as $segment) {
             if ($segment === '') {

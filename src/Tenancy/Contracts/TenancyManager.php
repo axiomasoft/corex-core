@@ -6,14 +6,13 @@ namespace CoreX\Tenancy\Contracts;
 
 use Closure;
 use CoreX\Tenancy\AccountRef;
-use CoreX\Tenancy\StanclTenancyManager;
 use CoreX\Tenancy\TenantContext;
 use CoreX\Tenancy\WorkspaceRef;
 
 /**
  * Single point of tenant-context switching (connection/cache/queue/fs).
  * Boxed installs bind a null-manager (constant context, no stancl); cloud
- * installs bind {@see StanclTenancyManager} — the choice is a container
+ * installs bind реализацию из пакета corex/tenancy — the choice is a container
  * binding, never an `if(cloud)` branch.
  *
  * @internal spec: B-11 §3.1, D10

@@ -10,7 +10,6 @@ use CoreX\Contracts\SettingsScope;
 use CoreX\Enums\SettingScope;
 use CoreX\Models\FeatureFlag;
 use CoreX\Models\FeatureOverride;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Override;
 
 /**
@@ -78,19 +77,18 @@ final class DatabaseFeatureFlags implements FeatureFlags
     public function define(FeatureFlagDefinition $def): void
     {
         // Atomic via the DB's UNIQUE(key) constraint (sys_feature_flags), not
-        // a read-then-create — two concurrent define() calls for the same
-        // key race on the INSERT, the loser's constraint violation is simply
-        // swallowed. Idempotent: never stomps an admin-toggled `is_enabled`.
-        try {
-            FeatureFlag::on($this->connection)->create([
+        // a read-then-create — createOrFirst() isolates a losing INSERT in a
+        // savepoint when called inside a surrounding transaction. Idempotent:
+        // never stomps an admin-toggled `is_enabled`.
+        FeatureFlag::on($this->connection)->createOrFirst(
+            attributes: ['key' => $def->key],
+            values: [
                 'key' => $def->key,
                 'module' => $def->module,
                 'is_enabled' => $def->default,
                 'payload' => $def->payload,
-            ]);
-        } catch (UniqueConstraintViolationException) {
-            // Already defined — define() is register-once, not upsert.
-        }
+            ],
+        );
     }
 
     private function find(string $key): ?FeatureFlag
