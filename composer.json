@@ -1,0 +1,50 @@
+{
+  "authors": [
+    {
+      "email": "dv.vostrikov@gmail.com",
+      "name": "Dmitry Vostrikov"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "CoreX\\": "src/"
+    }
+  },
+  "description": "CoreX kernel — base model (ULID), optional multi-tenancy, entity registry, settings, audit log, and money for any Laravel application.",
+  "extra": {
+    "laravel": {
+      "providers": [
+        "CoreX\\CoreServiceProvider"
+      ]
+    }
+  },
+  "keywords": [
+    "laravel",
+    "kernel",
+    "multi-tenancy",
+    "ulid",
+    "entity-registry",
+    "audit",
+    "settings"
+  ],
+  "license": "MIT",
+  "minimum-stability": "dev",
+  "name": "corex/core",
+  "prefer-stable": true,
+  "require": {
+    "brick/money": "^0.9 || ^0.10",
+    "illuminate/config": "^12.0|^13.0",
+    "illuminate/container": "^12.0|^13.0",
+    "illuminate/contracts": "^12.0|^13.0",
+    "illuminate/database": "^12.0|^13.0",
+    "illuminate/filesystem": "^12.0|^13.0",
+    "illuminate/http": "^12.0|^13.0",
+    "illuminate/support": "^12.0|^13.0",
+    "php": "^8.3"
+  },
+  "require-dev": {
+    "orchestra/testbench": "^10.0|^11.0"
+  },
+  "type": "library",
+  "version": "0.1.0-p4.3"
+}
